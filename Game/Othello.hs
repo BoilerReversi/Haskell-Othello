@@ -1,5 +1,5 @@
 import Data.Array
-
+import Data.List (intersperse)
 type Coord = (Int, Int)
 type Direction = Coord -> Coord
 type Boundary = Coord -> Bool
@@ -31,7 +31,8 @@ walkDirection bound crd dir = takeWhile bound $ tail $ iterate dir crd
 
 data Player = White | Black deriving(Show, Eq)
 data Square = Empty | Marked Player deriving(Show, Eq)
-data Board = Board (Array Coord Square) Player deriving(Show)
+data Board = Board {grid :: (Array Coord Square) 
+                   ,player :: Player} deriving(Show)
 
 initialBoard :: Board
 initialBoard = Board (emptyBoard // initialMarks) Black
@@ -63,18 +64,25 @@ makeMove board@(Board grid player) move
     flipAll coords currBoard = foldr (flip flipCoord) currBoard coords
 
 flippableWalks :: Board -> Coord -> [[Coord]]
-flippableWalks (Board grid player) move = map (walkDirection flippable move) directions
+flippableWalks (Board grid player) move = map farthestFlippable directions
   where
+    farthestFlippable direction = let fs = walkDirection flippable move direction
+                                  in if any (== (Marked player)) $ map (grid!) fs
+                                     then fs
+                                     else []
     flippable coord = (isInBounds coord) &&
                       ((grid ! coord) /= Empty) &&
+                      ((grid ! coord) /= (Marked player)) &&
                       ((grid ! coord) == (Marked (flipPlayer player)))
-    
+                      
+
+
 isEmptySquare :: Square -> Bool
 isEmptySquare Empty = True
 isEmptySquare _ = False
 
 isMarkedBy :: Player -> Square -> Bool
-isMarkedBy p (Marked m) =  p == m
+isMarkedBy p (Marked m) = p == m
 isMarkedBy _ _ = False
 
 isLegal :: Board -> Coord -> Bool
@@ -84,14 +92,22 @@ isLegal board@(Board grid player) move = ((grid ! move) == Empty) &&
 getGrid :: Board -> Array Coord Square
 getGrid (Board grid _) = grid
 
--- Returns Nothing if game isn't over. Just <WINNER> else
--- gameOver :: Board -> Maybe Player
+legalMoves :: Board -> [Coord]
+legalMoves board = foldr (\c acc -> if isLegal board c then c:acc else acc) [] allCoords
+  where
+    allCoords = [(x,y) | x <- [0..7], y <- [0..7]]
 
+-- Returns Nothing if game isn't over. Just <WINNER> else
+-- gameOver
+
+-- The code is filthy, but what print function isn't?
 printBoard :: Board -> IO ()
-printBoard (Board grid _) = mapM_  (putStrLn . stringRow) allCoords
+printBoard (Board grid _) = do putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
+                               mapM_ (putStrLn . stringRow) allCoords
+                               putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
   where
     allCoords = [[(x,y) | y <- [0..7]] | x <- [0..7]]
-    stringRow = foldl (\acc x -> acc ++ squareToChar (grid ! x) ++ " ") []
-    squareToChar Empty = "_"
-    squareToChar (Marked White) = "W"
-    squareToChar (Marked Black) = "B"
+    stringRow row@((x,_):_) = (show x) ++ " " ++ (foldl (\acc x -> acc ++ squareToChar (grid ! x) ++ " ") [] row) ++ "" ++ (show x)
+    squareToChar Empty = "-"
+    squareToChar (Marked White) = "O"
+    squareToChar (Marked Black) = "*"
