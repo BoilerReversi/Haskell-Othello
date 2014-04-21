@@ -1,6 +1,3 @@
--- currently a mess
--- porting Clojure atm
-
 import Data.Array
 
 type Coord = (Int, Int)
@@ -32,12 +29,12 @@ walkDirection bound crd dir = takeWhile bound $ tail $ iterate dir crd
 
 --
 
-data Player = White | Black deriving(Show)
-data Square = Empty | Marked Player deriving(Show)
+data Player = White | Black deriving(Show, Eq)
+data Square = Empty | Marked Player deriving(Show, Eq)
 data Board = Board (Array Coord Square) Player deriving(Show)
 
 initialBoard :: Board
-initialBoard = Board (emptyBoard // initialMarks) White
+initialBoard = Board (emptyBoard // initialMarks) Black
   where
     emptyBoard = array ((0,0), (7,7)) [((x,y), Empty) | x <- [0..7], y <- [0..7]]
     initialMarks = [((3,3), Marked White), 
@@ -50,19 +47,51 @@ flipPlayer White = Black
 flipPlayer Black = White
 
 flipSquare :: Square -> Square
-flipSquare Marked Black = Marked White
-flipSquare Marked White = Marked Black
+flipSquare (Marked Black) = Marked White
+flipSquare (Marked White) = Marked Black
+flipSquare Empty = Empty
+
+flipCoord :: Board -> Coord -> Board
+flipCoord (Board grid player) coord = Board (grid // [(coord, flipSquare $ grid ! coord)]) player
 
 makeMove :: Board -> Coord -> Maybe Board
-makeMove board@(Board _ player) move
-  | isLegal board move = Just $ board // [(move, Marked $ flipPlayer player)]
+makeMove board@(Board grid player) move
+  | isLegal board move = Just $ foldr flipAll markedBoard (flippableWalks board move)
   | otherwise = Nothing
+  where
+    markedBoard = (Board (grid // [(move, Marked player)]) (flipPlayer player))
+    flipAll coords currBoard = foldr (flip flipCoord) currBoard coords
+
+flippableWalks :: Board -> Coord -> [[Coord]]
+flippableWalks (Board grid player) move = map (walkDirection flippable move) directions
+  where
+    flippable coord = (isInBounds coord) &&
+                      ((grid ! coord) /= Empty) &&
+                      ((grid ! coord) == (Marked (flipPlayer player)))
+    
+isEmptySquare :: Square -> Bool
+isEmptySquare Empty = True
+isEmptySquare _ = False
+
+isMarkedBy :: Player -> Square -> Bool
+isMarkedBy p (Marked m) =  p == m
+isMarkedBy _ _ = False
 
 isLegal :: Board -> Coord -> Bool
-isLegal board move = True --!!
+isLegal board@(Board grid player) move = ((grid ! move) == Empty) &&
+                                         (any (not . null) $ flippableWalks board move)
 
+getGrid :: Board -> Array Coord Square
+getGrid (Board grid _) = grid
 
-flippableDirections :: Board -> Coord -> [Direction]
+-- Returns Nothing if game isn't over. Just <WINNER> else
+-- gameOver :: Board -> Maybe Player
 
--- flippable? (fn [ls] (and (= (first ls) (flip-player player))
---                                 (some #(= player %) (rest ls))))]
+printBoard :: Board -> IO ()
+printBoard (Board grid _) = mapM_  (putStrLn . stringRow) allCoords
+  where
+    allCoords = [[(x,y) | y <- [0..7]] | x <- [0..7]]
+    stringRow = foldl (\acc x -> acc ++ squareToChar (grid ! x) ++ " ") []
+    squareToChar Empty = "_"
+    squareToChar (Marked White) = "W"
+    squareToChar (Marked Black) = "B"
