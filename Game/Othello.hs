@@ -1,3 +1,6 @@
+-- currently a mess
+-- porting Clojure atm
+
 import Data.Array
 
 type Coord = (Int, Int)
@@ -15,13 +18,17 @@ east (row, col) = (row, col + 1)
  
 west :: Direction
 west (row, col) = (row, col - 1)
- 
+
+directions :: [Direction]
+directions = [north, (north . east), east, (south . east),
+              south, (south . west), west, (north. west)]
+             
 isInBounds :: Boundary
 isInBounds (row, col) = and [row >= 0, row < 8, col >= 0, col < 8]
  
 -- Starting Coord is not included in the walk
-walkDirection :: Boundary -> Direction -> Coord -> [Coord]
-walkDirection bound dir crd = takeWhile bound $ tail $ iterate dir crd
+walkDirection :: Boundary -> Coord -> Direction -> [Coord]
+walkDirection bound crd dir = takeWhile bound $ tail $ iterate dir crd
 
 --
 
@@ -48,9 +55,14 @@ flipSquare Marked White = Marked Black
 
 makeMove :: Board -> Coord -> Maybe Board
 makeMove board@(Board _ player) move
-  | isLegal board move = Just $ board // [(move, Marked player)]
+  | isLegal board move = Just $ board // [(move, Marked $ flipPlayer player)]
   | otherwise = Nothing
 
 isLegal :: Board -> Coord -> Bool
 isLegal board move = True --!!
 
+
+flippableDirections :: Board -> Coord -> [Direction]
+
+-- flippable? (fn [ls] (and (= (first ls) (flip-player player))
+--                                 (some #(= player %) (rest ls))))]
