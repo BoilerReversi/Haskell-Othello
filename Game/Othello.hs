@@ -1,5 +1,6 @@
 import Data.Array
 import Data.List (intersperse)
+
 type Coord = (Int, Int)
 type Direction = Coord -> Coord
 type Boundary = Coord -> Bool
@@ -31,8 +32,9 @@ walkDirection bound crd dir = takeWhile bound $ tail $ iterate dir crd
 
 data Player = White | Black deriving(Show, Eq)
 data Square = Empty | Marked Player deriving(Show, Eq)
-data Board = Board {grid :: (Array Coord Square) 
-                   ,player :: Player} deriving(Show)
+data Board = Board { grid :: (Array Coord Square) 
+                   , player :: Player 
+                   } deriving(Show)
 
 initialBoard :: Board
 initialBoard = Board (emptyBoard // initialMarks) Black
@@ -44,7 +46,7 @@ initialBoard = Board (emptyBoard // initialMarks) Black
                     ((4,3), Marked Black)]
 
 flipPlayer :: Player -> Player
-flipPlayer White = Black
+nflipPlayer White = Black
 flipPlayer Black = White
 
 flipSquare :: Square -> Square
@@ -53,29 +55,30 @@ flipSquare (Marked White) = Marked Black
 flipSquare Empty = Empty
 
 flipCoord :: Board -> Coord -> Board
-flipCoord (Board grid player) coord = Board (grid // [(coord, flipSquare $ grid ! coord)]) player
+flipCoord (Board g p) coord = Board (g // [(coord, flipSquare $ g ! coord)]) p
 
-makeMove :: Board -> Coord -> Maybe Board
-makeMove board@(Board grid player) move
-  | isLegal board move = Just $ foldr flipAll markedBoard (flippableWalks board move)
-  | otherwise = Nothing
+makeMove :: Board -> Coord -> Board
+makeMove board@(Board g p) move
+  | isLegal board move = foldr flipAll markedBoard (flippableWalks board move)
+  | otherwise = board
   where
-    markedBoard = (Board (grid // [(move, Marked player)]) (flipPlayer player))
+    markedBoard = (Board (g // [(move, Marked p)]) (flipPlayer p))
     flipAll coords currBoard = foldr (flip flipCoord) currBoard coords
 
 flippableWalks :: Board -> Coord -> [[Coord]]
-flippableWalks (Board grid player) move = map farthestFlippable directions
+flippableWalks (Board g p) move = map farthestFlippable directions
   where
-    farthestFlippable direction = let fs = walkDirection flippable move direction
-                                  in if any (== (Marked player)) $ map (grid!) fs
-                                     then fs
-                                     else []
-    flippable coord = (isInBounds coord) &&
-                      ((grid ! coord) /= Empty) &&
-                      ((grid ! coord) /= (Marked player)) &&
-                      ((grid ! coord) == (Marked (flipPlayer player)))
-                      
+    farthestFlippable direction = let cs = walkDirection flippable move direction
+                                      sqs = map (g !) cs
+                                  in case cs of [] -> []
+                                                [x] -> []
+                                                (x:xs)
+                                                    | any (== (Marked p)) sqs -> takeWhile (\x -> (g ! x) /= (Marked p)) cs
+                                                    | otherwise -> []
 
+
+    flippable coord = (isInBounds coord) &&
+                      ((g ! coord) /= Empty)
 
 isEmptySquare :: Square -> Bool
 isEmptySquare Empty = True
@@ -86,28 +89,36 @@ isMarkedBy p (Marked m) = p == m
 isMarkedBy _ _ = False
 
 isLegal :: Board -> Coord -> Bool
-isLegal board@(Board grid player) move = ((grid ! move) == Empty) &&
+isLegal board@(Board g p) move = ((g ! move) == Empty) &&
                                          (any (not . null) $ flippableWalks board move)
-
-getGrid :: Board -> Array Coord Square
-getGrid (Board grid _) = grid
 
 legalMoves :: Board -> [Coord]
 legalMoves board = foldr (\c acc -> if isLegal board c then c:acc else acc) [] allCoords
   where
     allCoords = [(x,y) | x <- [0..7], y <- [0..7]]
 
--- Returns Nothing if game isn't over. Just <WINNER> else
--- gameOver
+-- Returns `Nothing` if game isn't over. `Just <WINNER>` if the game is over
+gameOver :: Board -> Maybe Player
+gameOver b@(Board g p)
+    | (null $ legalMoves b) && 
+      (null $ legalMoves $ b {player = (flipPlayer p)}) = Just White
+    -- TODO: Determine winner
+    | otherwise = Nothing
 
 -- The code is filthy, but what print function isn't?
 printBoard :: Board -> IO ()
-printBoard (Board grid _) = do putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
-                               mapM_ (putStrLn . stringRow) allCoords
-                               putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
+printBoard (Board g _) = do putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
+                            mapM_ (putStrLn . stringRow) allCoords
+                            putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
   where
     allCoords = [[(x,y) | y <- [0..7]] | x <- [0..7]]
-    stringRow row@((x,_):_) = (show x) ++ " " ++ (foldl (\acc x -> acc ++ squareToChar (grid ! x) ++ " ") [] row) ++ "" ++ (show x)
+    stringRow row@((x,_):_) = (show x) ++ " " ++ (foldl (\acc x -> acc ++ squareToChar (g ! x) ++ " ") [] row) ++ "" ++ (show x)
     squareToChar Empty = "-"
     squareToChar (Marked White) = "O"
     squareToChar (Marked Black) = "*"
+
+-- TODO:
+-- Edax string to Board
+-- Board to Edax string
+-- Board to pretty string (instead of print)
+-- Make numbers 1-8 instead of 0-7
