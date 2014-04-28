@@ -1,3 +1,17 @@
+module Game.Othello (
+  Player(..),
+  Square(..),
+  Board,
+  OutputSquare(..),
+  initialBoard,
+  makeMove,
+  isLegal,
+  legalMoves,
+  printBoard,
+  gameOver,
+  outputList
+  ) where
+
 import Data.Array
 import Data.List (intersperse)
 
@@ -116,6 +130,16 @@ printBoard (Board g _) = do putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
     squareToChar Empty = "-"
     squareToChar (Marked White) = "O"
     squareToChar (Marked Black) = "*"
+
+data OutputSquare = X | O | E | L deriving(Show, Eq)
+
+toOutputSquare :: Square -> OutputSquare
+toOutputSquare Empty = E     
+toOutputSquare (Marked Black) = X
+toOutputSquare (Marked White) = O
+
+outputList :: Bool -> Board -> [OutputSquare] 
+outputList _ (Board grid _) = elems $ fmap toOutputSquare grid
 
 -- TODO:
 -- Edax string to Board
