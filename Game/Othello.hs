@@ -9,7 +9,9 @@ module Game.Othello (
   legalMoves,
   printBoard,
   gameOver,
-  outputList
+  outputList,
+  fromEdaxString,
+  toEdaxString
   ) where
 
 import Data.Array
@@ -48,7 +50,7 @@ data Player = White | Black deriving(Show, Eq)
 data Square = Empty | Marked Player deriving(Show, Eq)
 data Board = Board { grid :: (Array Coord Square) 
                    , player :: Player 
-                   } deriving(Show)
+                   } deriving(Show, Eq)
 
 initialBoard :: Board
 initialBoard = Board (emptyBoard // initialMarks) Black
@@ -126,12 +128,12 @@ printBoard (Board g _) = do putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
                             putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
   where
     allCoords = [[(x,y) | y <- [0..7]] | x <- [0..7]]
-    stringRow row@((x,_):_) = (show x) ++ " " ++ (foldl (\acc x -> acc ++ squareToChar (g ! x) ++ " ") [] row) ++ "" ++ (show x)
+    stringRow row@((x,_):_) = (show $ x+1) ++ " " ++ (foldl (\acc x -> acc ++ squareToChar (g ! x) ++ " ") [] row) ++ "" ++ (show $ x+1)
     squareToChar Empty = "-"
     squareToChar (Marked White) = "O"
     squareToChar (Marked Black) = "*"
 
-data OutputSquare = X | O | E | L deriving(Show, Eq)
+data OutputSquare = X | O | E | L | AI deriving(Show, Eq)
 
 toOutputSquare :: Square -> OutputSquare
 toOutputSquare Empty = E     
@@ -141,8 +143,29 @@ toOutputSquare (Marked White) = O
 outputList :: Bool -> Board -> [OutputSquare] 
 outputList _ (Board grid _) = elems $ fmap toOutputSquare grid
 
+
+-- Edax helpers
+-- Useful for feeding into the Edax engine or our Edax server
+fromEdaxString :: String -> Board
+fromEdaxString s = let (b:p:_) = words s
+                       grd = listArray ((0,0), (7,7)) $ map f b
+                       player = g p
+                   in Board grd player
+    where
+      f '-' = Empty
+      f 'X' = Marked Black
+      f 'O' = Marked White
+      g "O" = White
+      g "X" = Black
+
+toEdaxString :: Board -> String
+toEdaxString b = ((map f) $ elems $ grid b) ++ " " ++ (g $ player b)
+    where
+      f Empty = '-'
+      f (Marked Black) = 'X'
+      f (Marked White) = 'O'
+      g White = "O"
+      g Black = "X"
+
 -- TODO:
--- Edax string to Board
--- Board to Edax string
--- Board to pretty string (instead of print)
--- Make numbers 1-8 instead of 0-7
+-- make gameOver declare winner
