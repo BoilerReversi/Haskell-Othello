@@ -11,7 +11,7 @@ module Game.Othello (
   gameOver,
   outputList,
   fromEdaxString,
-  toEdaxString
+  toEdaxString,
   ) where
 
 import Data.Array
@@ -166,6 +166,12 @@ toEdaxString b = ((map f) $ elems $ grid b) ++ " " ++ (g $ player b)
       f (Marked White) = 'O'
       g White = "O"
       g Black = "X"
+
+
+rotateBoard :: Board -> Board
+rotateBoard b = b {grid = ixmap ((0,0), (7,7)) f $ grid b}
+    where
+      f (x,y) = (y, 7 - x)
 
 -- TODO:
 -- make gameOver declare winner
