@@ -62,7 +62,7 @@ initialBoard = Board (emptyBoard // initialMarks) Black
                     ((4,3), Marked Black)]
 
 flipPlayer :: Player -> Player
-nflipPlayer White = Black
+flipPlayer White = Black
 flipPlayer Black = White
 
 flipSquare :: Square -> Square
