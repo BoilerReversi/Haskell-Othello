@@ -141,8 +141,10 @@ toOutputSquare (Marked Black) = X
 toOutputSquare (Marked White) = O
 
 outputList :: Bool -> Board -> [OutputSquare] 
-outputList _ (Board grid _) = elems $ fmap toOutputSquare grid
-
+outputList False (Board grid _) = elems $ fmap toOutputSquare grid
+outputList True b@(Board grid _) = elems $ foldr (\x acc -> acc // [(x, L)]) os $ legalMoves b
+  where
+    os = fmap toOutputSquare grid
 
 -- Edax helpers
 -- Useful for feeding into the Edax engine or our Edax server
