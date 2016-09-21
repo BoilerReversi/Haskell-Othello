@@ -121,7 +121,6 @@ gameOver b@(Board g p)
     -- TODO: Determine winner
     | otherwise = Nothing
 
--- The code is filthy, but what print function isn't?
 printBoard :: Board -> IO ()
 printBoard (Board g _) = do putStrLn $ ("  "++) $ intersperse ' ' ['A'..'H']
                             mapM_ (putStrLn . stringRow) allCoords
@@ -146,6 +145,7 @@ outputList True False b@(Board grid _) = elems $ foldr (\x acc -> acc // [(x, L)
   where
     os = fmap toOutputSquare grid
 outputList _ True b@(Board grid _) = elems $ (fmap toOutputSquare grid) // [(head $ legalMoves b, AI)]
+
 -- Edax helpers
 -- Useful for feeding into the Edax engine or our Edax server
 fromEdaxString :: String -> Board
@@ -174,6 +174,3 @@ rotateBoard :: Board -> Board
 rotateBoard b = b {grid = ixmap ((0,0), (7,7)) f $ grid b}
     where
       f (x,y) = (y, 7 - x)
-
--- TODO:
--- make gameOver declare winner
